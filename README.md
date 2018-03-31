@@ -1,42 +1,40 @@
 # haskellTips
 ```haskell
-data Lens object field 
-  = Lens 
+module Main where
+
+main :: IO ()
+main = do
+  putStrLn $ (Person "david" 30) `getter` personNameLens
+  print $ do
+    (Person "david" 30 `setter` personNameLens) $ "lol"
+
+data Lens object field
+  = Lens
   { get :: object -> field
-  , set :: object -> field -> object 
+  , set :: object -> field -> object
   }
-```
-```haskell
-set :: object -> Lens object field -> field -> object
-set object (Lens _ setter) newField = setter object newField
-```
-```haskell
-set :: objectType -> Lens objectType fieldType -> fieldType -> objectType
-set object (Lens _ setter) newField = 
-  (setter :: objectType -> fieldType -> objectType) object newField
-```
-```haskell
-get :: object -> Lens object field -> field 
-get object (Lens getter _) = getter object
-```
-```haskell
+
+data Person
+  = Person
+  { name :: String
+  , age :: Int
+  } deriving (Show)
+
 personNameLens :: Lens Person String
 personNameLens = Lens name updateName
    where
      updateName :: Person -> String -> Person
-     updateName p newName = p { name = newName } 
-```
-```haskell
+     updateName p newName = p { name = newName }
+
 personAgeLens :: Lens Person Int
 personAgeLens = Lens age updateAge
    where
        updateAge :: Person -> Int -> Person
        updateAge p newAge = p { age = newAge }
-```       
-```haskell
-setter (Person "david" 30) personNameLens $ "lol"
-> Person "lol" 30
-```
-```haskell
-Person "david" 30 `get` personNameLens 
+
+setter :: object -> Lens object field -> field -> object
+setter object (Lens _ setter') newField = setter' object newField
+
+getter :: object -> Lens object field -> field
+getter object (Lens getter' _) = getter' object
 ```
