@@ -33,3 +33,7 @@ personAgeLens = Lens age updateAge
        updateAge :: Person -> Int -> Person
        updateAge p newAge = p { age = newAge }
 ```       
+```haskell
+Person "david" 30 `get` personNameLens 
+> "david"
+```
