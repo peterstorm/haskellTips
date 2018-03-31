@@ -34,6 +34,6 @@ personAgeLens = Lens age updateAge
        updateAge p newAge = p { age = newAge }
 ```       
 ```haskell
-Person "david" 30 `get` personNameLens 
+Person "david" 30 `set` personNameLens $ "lol"
 > "david"
 ```
