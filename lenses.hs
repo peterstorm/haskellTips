@@ -1,8 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-
-
 main :: IO ()
 main = do
   putStrLn $ getter (Person "david" 30 (Location "city" "state")) personNameLens
@@ -10,6 +8,34 @@ main = do
     setter (Person "david" 30 (Location "city" "state")) personNameLens $ "lol"
   print $ do
     setter (Person "Peter" 32 (Location "Sandby" "Sealand")) personCityLens $ "Copenhagen"
+
+class Category cat where
+  identity :: cat a a
+  (<<<) :: cat b c -> cat a b -> cat a c
+
+-- (right identity)
+-- f . id  =  f
+
+-- (left identity)
+-- id . f  =  f
+
+-- (associativity)
+-- f . (g . h)  =  (f . g) . h
+
+instance Category Lens where
+  identity = Lens { get = \(o :: a) -> id o
+                    , set = \(o :: a) -> \(f :: a) -> const o f
+                    }
+
+  (<<<) lens2 lens1 = lens3
+    where
+      getLens2 = get lens2
+      setLens2 = set lens2
+      getLens1 = get lens1
+      setLens1 = set lens1
+      lens3 = Lens { get = \(o :: a) -> getLens2 . getLens1 $ o
+                   , set = \(o :: a) -> \(f :: c) -> setLens1 o (setLens2 (getLens1 o) f)
+                   }
 
 data Lens object field
   = Lens
@@ -60,6 +86,17 @@ personLocationLens = Lens location updateLocation
     updateLocation :: Person -> Location -> Person
     updateLocation p newLocation = p { location = newLocation }
 
+personCityLens :: Lens Person String
+personCityLens = composeLenses addressCityLens personLocationLens
+
+personStateLens :: Lens Person String
+personStateLens = composeLenses addressStateLens personLocationLens
+
+identityLens :: Lens a a
+identityLens = Lens { get = \(o :: a) -> id o
+                    , set = \(o :: a) -> \(f :: a) -> const o f
+                    }
+
 composeLenses :: forall a b c . Lens b c -> Lens a b -> Lens a c
 composeLenses lens2 lens1 = lens3
   where
@@ -79,9 +116,6 @@ composeLenses lens2 lens1 = lens3
                    , set = \(o :: a) -> \(f :: c) -> setLens1 o (setLens2 (getLens1 o) f)
                    }
 
-personCityLens :: Lens Person String
-personCityLens = composeLenses addressCityLens personLocationLens
-
 setter :: object -> Lens object field -> field -> object
 setter object (Lens _ setter') newField = setter' object newField
 
@@ -97,4 +131,3 @@ _2 :: Lens (a, b) b
 _2 = Lens { get = \(a, b) -> b
           , set = \(a, b) -> \newB -> (a, newB)
           }
-
