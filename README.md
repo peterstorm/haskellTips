@@ -50,3 +50,140 @@ You might be thinking, “But I don’t know how to write my own Monads?“, tha
 @Peter Storm so now that you’ve seen the `Category` class, the `ShowMe` class, and how to make an instance of the `ShowMe` class, using what you’ve defined already `composeLens`, can you make an instance of the `Category` class for `Lens` (edited)
 well, before we do that
 it might be beneficial for you to write the identity lens
+
+### Lenses
+```haskell
+{-# LANGUAGE ScopedTypeVariables #-}
+module Main where
+
+main :: IO ()
+main = do
+  putStrLn $ getter (Person "david" 30 (Location "city" "state")) personNameLens
+  print $ do
+    setter (Person "david" 30 (Location "city" "state")) personNameLens $ "lol"
+  print $ do
+    setter (Person "Peter" 32 (Location "Sandby" "Sealand")) personCityLens $ "Copenhagen"
+
+class Category cat where
+  identity :: cat a a
+  (<<<) :: cat b c -> cat a b -> cat a c
+
+-- (right identity)
+-- f . id  =  f
+
+-- (left identity)
+-- id . f  =  f
+
+-- (associativity)
+-- f . (g . h)  =  (f . g) . h
+
+instance Category Lens where
+  identity = Lens { get = \(o :: a) -> id o
+                    , set = \(o :: a) -> \(f :: a) -> const o f
+                    }
+
+  (<<<) lens2 lens1 = lens3
+    where
+      getLens2 = get lens2
+      setLens2 = set lens2
+      getLens1 = get lens1
+      setLens1 = set lens1
+      lens3 = Lens { get = \(o :: a) -> getLens2 . getLens1 $ o
+                   , set = \(o :: a) -> \(f :: c) -> setLens1 o (setLens2 (getLens1 o) f)
+                   }
+
+data Lens object field
+  = Lens
+  { get :: object -> field
+  , set :: object -> field -> object
+  }
+
+data Person
+  = Person
+  { name :: String
+  , age :: Int
+  , location :: Location
+  } deriving (Show)
+
+data Location
+  = Location
+    { city :: String
+    , state :: String
+    } deriving Show
+
+personNameLens :: Lens Person String
+personNameLens = Lens name updateName
+  where
+    updateName :: Person -> String -> Person
+    updateName p newName = p { name = newName }
+
+personAgeLens :: Lens Person Int
+personAgeLens = Lens age updateAge
+   where
+       updateAge :: Person -> Int -> Person
+       updateAge p newAge = p { age = newAge }
+
+addressCityLens :: Lens Location String
+addressCityLens = Lens city updateCity
+  where
+    updateCity :: Location -> String -> Location
+    updateCity l newCity = l { city = newCity }
+
+addressStateLens :: Lens Location String
+addressStateLens = Lens state updateState
+  where
+    updateState :: Location -> String -> Location
+    updateState l newState = l { state = newState }
+
+personLocationLens :: Lens Person Location
+personLocationLens = Lens location updateLocation
+  where
+    updateLocation :: Person -> Location -> Person
+    updateLocation p newLocation = p { location = newLocation }
+
+personCityLens :: Lens Person String
+personCityLens = composeLenses addressCityLens personLocationLens
+
+personStateLens :: Lens Person String
+personStateLens = composeLenses addressStateLens personLocationLens
+
+identityLens :: Lens a a
+identityLens = Lens { get = \(o :: a) -> id o
+                    , set = \(o :: a) -> \(f :: a) -> const o f
+                    }
+
+composeLenses :: forall a b c . Lens b c -> Lens a b -> Lens a c
+composeLenses lens2 lens1 = lens3
+  where
+      getLens2 :: b -> c
+      getLens2 = get lens2
+
+      setLens2 :: b -> c -> b
+      setLens2 = set lens2
+
+      getLens1 :: a -> b
+      getLens1 = get lens1
+
+      setLens1 :: a -> b -> a
+      setLens1 = set lens1
+
+      lens3 = Lens { get = \(o :: a) -> getLens2 . getLens1 $ o
+                   , set = \(o :: a) -> \(f :: c) -> setLens1 o (setLens2 (getLens1 o) f)
+                   }
+
+setter :: object -> Lens object field -> field -> object
+setter object (Lens _ setter') newField = setter' object newField
+
+getter :: object -> Lens object field -> field
+getter object (Lens getter' _) = getter' object
+
+_1 :: Lens (a, b) a
+_1 = Lens { get = \(a, b) -> a
+          , set = \(a, b) -> \newA -> (newA, b)
+          }
+
+_2 :: Lens (a, b) b
+_2 = Lens { get = \(a, b) -> b
+          , set = \(a, b) -> \newB -> (a, newB)
+          }
+```
